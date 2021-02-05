@@ -521,25 +521,7 @@ MyAlgebra::Matrix MyAlgebra::Matrix::operator~() const
 	MyAlgebra::Matrix result(coll, row);
 	if (row * coll < 2500000)
 	{
-		const unsigned int canBeFolded = (coll / VECTORIZATION_SIZE) * VECTORIZATION_SIZE;
-		for (unsigned int i = 0; i < row; ++i)
-		{
-			for (unsigned int j = 0; j < canBeFolded; j += VECTORIZATION_SIZE)
-			{
-				result.data[j * row + i] = data[i * coll + j];
-				result.data[(j + 1) * row + i] = data[i * coll + j + 1];
-				result.data[(j + 2) * row + i] = data[i * coll + j + 2];
-				result.data[(j + 3) * row + i] = data[i * coll + j + 3];
-				result.data[(j + 4) * row + i] = data[i * coll + j + 4];
-				result.data[(j + 5) * row + i] = data[i * coll + j + 5];
-				result.data[(j + 6) * row + i] = data[i * coll + j + 6];
-				result.data[(j + 7) * row + i] = data[i * coll + j + 7];
-			}
-			for (unsigned int j = canBeFolded; j < coll; ++j)
-			{
-				result.data[j * row + i] = data[i * coll + j];
-			}
-		}
+		transposeMatrixHelper(&result, 0, row);
 	}
 	else
 	{
