@@ -86,6 +86,7 @@ namespace MyAlgebra
 		// =========================================================================
 		void CreateData(bool randomInit);
 		void CopyData(const Matrix& rhs);
+		void FillDiagonal(float diagonal);
 		void MoveData(Matrix& rhs);
 		void ClearData();
 

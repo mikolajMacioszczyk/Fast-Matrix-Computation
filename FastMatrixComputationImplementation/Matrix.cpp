@@ -24,10 +24,7 @@ MyAlgebra::Matrix::Matrix(unsigned int row, float diagonal)
 	: row(row), coll(row), data(nullptr), fullSize(row* row)
 {
 	CreateData(false);
-	for (unsigned int i = 0; i < fullSize; i += coll + 1)
-	{
-		data[i] = diagonal;
-	}
+	FillDiagonal(diagonal);
 }
 
 MyAlgebra::Matrix::Matrix(const Matrix& rhs)
@@ -59,10 +56,7 @@ const MyAlgebra::Matrix& MyAlgebra::Matrix::operator=(float diagonal)
 	{
 		data[i] = DEFAULT_VALUE;
 	}
-	for (unsigned int i = 0; i < fullSize; i += coll + 1)
-	{
-		data[i] = diagonal;
-	}
+	FillDiagonal(diagonal);
 	return *this;
 }
 
@@ -388,22 +382,7 @@ MyAlgebra::Matrix MyAlgebra::Matrix::operator+(const Matrix& rhs) const
 	MyAlgebra::Matrix result(row, coll);
 	if (row * coll < 5000000)
 	{
-		const unsigned int canBeUnfloaded = (fullSize / VECTORIZATION_SIZE) * VECTORIZATION_SIZE;
-		for (unsigned int j = 0; j < canBeUnfloaded; j += VECTORIZATION_SIZE)
-		{
-			result.data[j] = data[j] + rhs.data[j];
-			result.data[j + 1] = data[j + 1] + rhs.data[j + 1];
-			result.data[j + 2] = data[j + 2] + rhs.data[j + 2];
-			result.data[j + 3] = data[j + 3] + rhs.data[j + 3];
-			result.data[j + 4] = data[j + 4] + rhs.data[j + 4];
-			result.data[j + 5] = data[j + 5] + rhs.data[j + 5];
-			result.data[j + 6] = data[j + 6] + rhs.data[j + 6];
-			result.data[j + 7] = data[j + 7] + rhs.data[j + 7];
-		}
-		for (unsigned int j = canBeUnfloaded; j < fullSize; ++j)
-		{
-			result.data[j] = data[j] + rhs.data[j];
-		}
+		operatorPlusHelper(&rhs, &result, 0, fullSize);
 	}
 	else
 	{
@@ -423,22 +402,7 @@ MyAlgebra::Matrix MyAlgebra::Matrix::operator+(Matrix&& rhs) const
 	}
 	if (row * coll < 5000000)
 	{
-		const int canBeUnfloaded = (fullSize / VECTORIZATION_SIZE) * VECTORIZATION_SIZE;
-		for (int j = 0; j < canBeUnfloaded; j += VECTORIZATION_SIZE)
-		{
-			rhs.data[j] += data[j];
-			rhs.data[j + 1] += data[j + 1];
-			rhs.data[j + 2] += data[j + 2];
-			rhs.data[j + 3] += data[j + 3];
-			rhs.data[j + 4] += data[j + 4];
-			rhs.data[j + 5] += data[j + 5];
-			rhs.data[j + 6] += data[j + 6];
-			rhs.data[j + 7] += data[j + 7];
-		}
-		for (int j = canBeUnfloaded; j < fullSize; ++j)
-		{
-			rhs.data[j] += data[j];
-		}
+		operatorPlusHelperMove(&rhs, 0, fullSize);
 	}
 	else
 	{
@@ -479,22 +443,7 @@ MyAlgebra::Matrix MyAlgebra::Matrix::operator-(const Matrix& rhs) const
 	MyAlgebra::Matrix result(row, coll);
 	if (row * coll < 5000000)
 	{
-		const unsigned int canBeUnfloaded = (fullSize / VECTORIZATION_SIZE) * VECTORIZATION_SIZE;
-		for (unsigned int j = 0; j < canBeUnfloaded; j += VECTORIZATION_SIZE)
-		{
-			result.data[j] = data[j] - rhs.data[j];
-			result.data[j + 1] = data[j + 1] - rhs.data[j + 1];
-			result.data[j + 2] = data[j + 2] - rhs.data[j + 2];
-			result.data[j + 3] = data[j + 3] - rhs.data[j + 3];
-			result.data[j + 4] = data[j + 4] - rhs.data[j + 4];
-			result.data[j + 5] = data[j + 5] - rhs.data[j + 5];
-			result.data[j + 6] = data[j + 6] - rhs.data[j + 6];
-			result.data[j + 7] = data[j + 7] - rhs.data[j + 7];
-		}
-		for (unsigned int j = canBeUnfloaded; j < fullSize; ++j)
-		{
-			result.data[j] = data[j] - rhs.data[j];
-		}
+		operatorMinusHelper(&rhs, &result, 0, fullSize);
 	}
 	else
 	{
@@ -514,22 +463,7 @@ MyAlgebra::Matrix MyAlgebra::Matrix::operator-(Matrix&& rhs) const
 	}
 	if (row * coll < 5000000)
 	{
-		const int canBeUnfloaded = (fullSize / VECTORIZATION_SIZE) * VECTORIZATION_SIZE;
-		for (int j = 0; j < canBeUnfloaded; j += VECTORIZATION_SIZE)
-		{
-			rhs.data[j] = data[j] - rhs.data[j];
-			rhs.data[j + 1] = data[j + 1] - rhs.data[j + 1];
-			rhs.data[j + 2] = data[j + 2] - rhs.data[j + 2];
-			rhs.data[j + 3] = data[j + 3] - rhs.data[j + 3];
-			rhs.data[j + 4] = data[j + 4] - rhs.data[j + 4];
-			rhs.data[j + 5] = data[j + 5] - rhs.data[j + 5];
-			rhs.data[j + 6] = data[j + 6] - rhs.data[j + 6];
-			rhs.data[j + 7] = data[j + 7] - rhs.data[j + 7];
-		}
-		for (int j = canBeUnfloaded; j < fullSize; ++j)
-		{
-			rhs.data[j] = data[j] - rhs.data[j];
-		}
+		operatorMinusHelper(&rhs, &rhs, 0, fullSize);
 	}
 	else
 	{
@@ -700,6 +634,14 @@ void MyAlgebra::Matrix::CopyData(const Matrix& rhs)
 	for (unsigned int j = canBeLoaded; j < fullSize; ++j)
 	{
 		data[j] = rhs.data[j];
+	}
+}
+
+inline void MyAlgebra::Matrix::FillDiagonal(float diagonal)
+{
+	for (unsigned int i = 0; i < fullSize; i += coll + 1)
+	{
+		data[i] = diagonal;
 	}
 }
 
